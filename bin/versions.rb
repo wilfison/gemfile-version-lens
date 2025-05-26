@@ -3,6 +3,7 @@
 
 require 'json'
 require 'open3'
+
 require 'bundler'
 
 module Versions
@@ -17,7 +18,8 @@ module Versions
     Bundler::LockfileParser.new(Bundler.read_file(Bundler.default_lockfile)).specs.each do |spec|
       gem_specs[spec.name] ||= {
         installed: spec.version.to_s,
-        newest: nil
+        newest: nil,
+        changelog_uri: nil
       }
     rescue StandardError => e
       gem_specs[:errors] << "Error processing local version for #{spec.name}: #{e.message}"
@@ -41,6 +43,7 @@ module Versions
       gem_specs[gem_name] ||= {}
       gem_specs[gem_name][:newest] = newest_version
       gem_specs[gem_name][:installed] = installed_version
+      gem_specs[gem_name] = gem_specs[gem_name].merge(gem_uris(gem_name))
     end
   rescue StandardError => e
     gem_specs[:errors] << "Error fetching remote versions: #{e.message}"
@@ -50,6 +53,16 @@ module Versions
     return './bin/bundle' if File.exist?('./bin/bundle')
 
     'bundle'
+  end
+
+  def self.gem_uris(name)
+    spec = Bundler.rubygems.find_name(name).first
+    return {} unless spec
+
+    {
+      homepage: spec.homepage,
+      changelog: spec.metadata['changelog_uri']
+    }
   end
 end
 
