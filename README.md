@@ -21,6 +21,7 @@
 - Visual Studio Code 1.100.0 or higher
 - Ruby installed on your system (used to run the version check script)
 - Bundler installed (`gem install bundler`)
+- A `Gemfile` in your workspace
 
 ## Installation
 
@@ -33,22 +34,13 @@ Alternatively, you can install this extension directly from the [Visual Studio C
 
 ## How it works
 
-This extension activates automatically when you open a Gemfile. It parses the file content to identify gem declarations and then runs a Ruby script that fetches the latest version information using Bundler.
+This extension activates automatically when you open a Gemfile. It parses the file content to identify gem declarations and then runs a Ruby script that fetches the latest minor version information using Bundler.
 
 The extension displays the following information as Code Lens:
 
 - The currently installed version
 - The latest available version (if an update is available)
 - Links to the gem's homepage and changelog (when available)
-
-## Extension Settings
-
-This extension offers the following settings:
-
-- `gemfileVersionLens.enable`: Enable/disable this extension.
-- `gemfileVersionLens.showHomepage`: Show a link to the gem's homepage.
-- `gemfileVersionLens.showChangelog`: Show a link to the gem's changelog (when available).
-- `gemfileVersionLens.checkMinorVersions`: Check for minor version updates.
 
 ## Known Issues
 
@@ -57,7 +49,7 @@ This extension offers the following settings:
 
 ## Contributing
 
-Contributions are welcome! Feel free to report issues or submit pull requests to the [GitHub repository](https://github.com/username/gemfile-version-lens).
+Contributions are welcome! Feel free to report issues or submit pull requests to the [GitHub repository](https://github.com/wilfison/gemfile-version-lens).
 
 1. Fork the repository
 2. Create a branch for your feature (`git checkout -b feature/amazing-feature`)
@@ -71,12 +63,7 @@ This project is licensed under the MIT License - see the [LICENSE](https://githu
 
 ## Release Notes
 
-### 1.0.0
-
-- Initial release
-- Support for displaying current and latest versions for gems in the Gemfile
-- Links to homepage and changelog
-- Customizable settings
+See the [CHANGELOG](https://github.com/wilfison/gemfile-version-lens/blob/main/CHANGELOG.md) for details on the latest releases.
 
 ---
 
