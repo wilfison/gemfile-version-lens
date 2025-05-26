@@ -1,6 +1,8 @@
 .vscode/**
 .vscode-test/**
 src/**
+out/test/**
+test/**
 .gitignore
 .yarnrc
 vsc-extension-quickstart.md
@@ -11,3 +13,7 @@ vsc-extension-quickstart.md
 **/.vscode-test.*
 Gemfile.lock
 tmp/
+images/*.svg
+.github/**
+.eslintignore
+.eslintrc.json

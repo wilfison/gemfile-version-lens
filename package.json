@@ -1,14 +1,39 @@
 {
   "name": "gemfile-version-lens",
-  "displayName": "gemfile-version-lens",
-  "description": "",
-  "version": "0.0.1",
+  "displayName": "Gemfile Version Lens",
+  "description": "Shows the latest version for each gem in a Gemfile using code lens",
+  "version": "1.0.0",
+  "publisher": "wilfison",
   "engines": {
     "vscode": "^1.100.0"
   },
   "categories": [
+    "Programming Languages",
     "Other"
   ],
+  "keywords": [
+    "ruby",
+    "gemfile",
+    "bundler",
+    "gems",
+    "version"
+  ],
+  "preview": false,
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "color": "#c31d1d",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wilfison/gemfile-version-lens"
+  },
+  "homepage": "https://github.com/wilfison/gemfile-version-lens#readme",
+  "bugs": {
+    "url": "https://github.com/wilfison/gemfile-version-lens/issues"
+  },
+  "license": "MIT",
+  "author": "Wilfison Batista",
   "activationEvents": [
     "onLanguage:ruby",
     "workspaceContains:Gemfile"
@@ -34,17 +59,20 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "package": "vsce package",
+    "publish": "vsce publish"
   },
   "devDependencies": {
-    "@types/vscode": "^1.100.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
+    "@types/vscode": "^1.100.0",
     "@typescript-eslint/eslint-plugin": "^8.31.1",
     "@typescript-eslint/parser": "^8.31.1",
-    "eslint": "^9.25.1",
-    "typescript": "^5.8.3",
     "@vscode/test-cli": "^0.0.10",
-    "@vscode/test-electron": "^2.5.2"
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.4.2",
+    "eslint": "^9.25.1",
+    "typescript": "^5.8.3"
   }
 }

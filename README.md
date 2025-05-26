@@ -1,71 +1,83 @@
-# gemfile-version-lens README
+# Gemfile Version Lens
 
-This is the README for your extension "gemfile-version-lens". After writing up a brief description, we recommend including the following sections.
+[![Version](https://img.shields.io/visual-studio-marketplace/v/wilfison.gemfile-version-lens.svg)](https://marketplace.visualstudio.com/items?itemName=wilfison.gemfile-version-lens)
+[![Installs](https://img.shields.io/visual-studio-marketplace/i/wilfison.gemfile-version-lens.svg)](https://marketplace.visualstudio.com/items?itemName=wilfison.gemfile-version-lens)
+[![Rating](https://img.shields.io/visual-studio-marketplace/r/wilfison.gemfile-version-lens.svg)](https://marketplace.visualstudio.com/items?itemName=wilfison.gemfile-version-lens)
+
+**Gemfile Version Lens** displays the latest available version for each gem in your Gemfile directly in the editor, using VS Code's Code Lens. Save time checking if your gems are up to date without leaving your editor!
+
+![Gemfile Version Lens in action](https://github.com/wilfison/gemfile-version-lens/raw/HEAD/images/preview.png)
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+- Shows the installed version of each gem directly above its declaration
+- Highlights when a newer version is available
+- Quick links to the gem's homepage and changelog (when available)
+- Version caching for optimized performance
+- Automatically detects when the Gemfile is saved and updates information
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- Visual Studio Code 1.100.0 or higher
+- Ruby installed on your system (used to run the version check script)
+- Bundler installed (`gem install bundler`)
+
+## Installation
+
+1. Open VS Code
+2. Press `Ctrl+P` (or `Cmd+P` on macOS)
+3. Type `ext install wilfison.gemfile-version-lens`
+4. Press Enter
+
+Alternatively, you can install this extension directly from the [Visual Studio Code Marketplace](https://marketplace.visualstudio.com/items?itemName=wilfison.gemfile-version-lens).
+
+## How it works
+
+This extension activates automatically when you open a Gemfile. It parses the file content to identify gem declarations and then runs a Ruby script that fetches the latest version information using Bundler.
+
+The extension displays the following information as Code Lens:
+
+- The currently installed version
+- The latest available version (if an update is available)
+- Links to the gem's homepage and changelog (when available)
 
 ## Extension Settings
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+This extension offers the following settings:
 
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+- `gemfileVersionLens.enable`: Enable/disable this extension.
+- `gemfileVersionLens.showHomepage`: Show a link to the gem's homepage.
+- `gemfileVersionLens.showChangelog`: Show a link to the gem's changelog (when available).
+- `gemfileVersionLens.checkMinorVersions`: Check for minor version updates.
 
 ## Known Issues
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+- The extension requires Ruby and Bundler to be installed on your system to work properly.
+- In large projects with many gems, the initial check may take a little longer.
+
+## Contributing
+
+Contributions are welcome! Feel free to report issues or submit pull requests to the [GitHub repository](https://github.com/username/gemfile-version-lens).
+
+1. Fork the repository
+2. Create a branch for your feature (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/wilfison/gemfile-version-lens/blob/main/LICENSE) file for details.
 
 ## Release Notes
 
-Users appreciate release notes as you update your extension.
-
 ### 1.0.0
 
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
+- Initial release
+- Support for displaying current and latest versions for gems in the Gemfile
+- Links to homepage and changelog
+- Customizable settings
 
 ---
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
 
 **Enjoy!**
