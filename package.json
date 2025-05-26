@@ -33,7 +33,10 @@
     "url": "https://github.com/wilfison/gemfile-version-lens/issues"
   },
   "license": "MIT",
-  "author": "Wilfison Batista",
+  "author": {
+    "name": "wilfison",
+    "url": "https://github.com/wilfison"
+  },
   "activationEvents": [
     "onLanguage:ruby",
     "workspaceContains:Gemfile"
