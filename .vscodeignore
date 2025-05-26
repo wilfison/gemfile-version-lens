@@ -14,6 +14,10 @@ vsc-extension-quickstart.md
 Gemfile.lock
 tmp/
 images/*.svg
+images/preview.png
 .github/**
 .eslintignore
 .eslintrc.json
+Gemfile*
+.rubocop.yml
+.ruby-lsp/
