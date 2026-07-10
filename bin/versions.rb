@@ -17,7 +17,13 @@ module Versions
   end
 
   def self.local_versions(gem_specs = {}) # rubocop:disable Metrics/AbcSize
-    Bundler::LockfileParser.new(Bundler.read_file(Bundler.default_lockfile)).specs.each do |spec|
+    parser = Bundler::LockfileParser.new(Bundler.read_file(Bundler.default_lockfile))
+    # Only expose gems declared in the Gemfile.
+    declared = parser.dependencies
+
+    parser.specs.each do |spec|
+      next unless declared.key?(spec.name)
+
       gem_specs[spec.name] ||= {
         installed: spec.version.to_s,
         newest: nil
