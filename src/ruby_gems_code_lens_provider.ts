@@ -7,6 +7,7 @@ import {
   window,
   Range,
   TextDocument,
+  OutputChannel,
 } from "vscode";
 import * as path from "node:path";
 import * as cp from "node:child_process";
@@ -22,7 +23,8 @@ interface GemSpec {
 
 // Type for the result of executing versions.rb
 export interface GemVersionsOutput {
-  [gemName: string]: GemSpec;
+  gems: Record<string, GemSpec>;
+  errors: string[];
 }
 
 class RubyGemsCodeLensProvider implements CodeLensProvider {
@@ -30,9 +32,11 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
   public readonly onDidChangeCodeLenses: Event<void> = this._onDidChangeCodeLenses.event;
 
   public readonly cache: Cache;
+  private readonly output: OutputChannel;
 
   constructor(cache: Cache) {
     this.cache = cache;
+    this.output = window.createOutputChannel("Gemfile Version Lens");
 
     // Watch for changes to Gemfile
     workspace.onDidSaveTextDocument((doc) => {
@@ -83,7 +87,7 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
         document.positionAt(match.index + match[0].length)
       );
 
-      const gemInfo = gemVersions[gemName];
+      const gemInfo = gemVersions.gems[gemName];
       if (!gemInfo) {
         continue; // Skip if gem info is not available
       }
@@ -152,6 +156,9 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
 
         cp.exec(`ruby "${scriptPath}"`, { cwd, env }, (error, stdout, stderr) => {
           if (error) {
+            if (stderr) {
+              this.output.appendLine(stderr);
+            }
             window.showErrorMessage(`Failed to run versions.rb: ${error.message}`);
             resolve(null);
             return;
@@ -159,6 +166,7 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
 
           try {
             const parsedOutput = JSON.parse(stdout) as GemVersionsOutput;
+            this.reportErrors(parsedOutput.errors);
             resolve(parsedOutput);
           } catch (e) {
             window.showErrorMessage(`Failed to parse output from versions.rb: ${e}`);
@@ -170,6 +178,29 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
         resolve(null);
       }
     });
+  }
+
+  // Surface errors reported by versions.rb instead of failing silently
+  private reportErrors(errors: string[]): void {
+    if (!errors || errors.length === 0) {
+      return;
+    }
+
+    this.output.appendLine(`${errors.length} issue(s) while reading gem versions:`);
+    for (const message of errors) {
+      this.output.appendLine(`  - ${message}`);
+    }
+
+    window
+      .showWarningMessage(
+        `Gemfile Version Lens: ${errors.length} issue(s) while reading gem versions.`,
+        "Show Details"
+      )
+      .then((choice) => {
+        if (choice === "Show Details") {
+          this.output.show(true);
+        }
+      });
   }
 }
 

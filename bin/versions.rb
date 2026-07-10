@@ -11,16 +11,17 @@ module Versions
     gem_specs = { errors: [] }
     local_versions(gem_specs)
     remote_versions(gem_specs)
-    gem_specs
+
+    errors = gem_specs.delete(:errors)
+    { gems: gem_specs, errors: errors }
   end
 
   def self.local_versions(gem_specs = {}) # rubocop:disable Metrics/AbcSize
     Bundler::LockfileParser.new(Bundler.read_file(Bundler.default_lockfile)).specs.each do |spec|
       gem_specs[spec.name] ||= {
         installed: spec.version.to_s,
-        newest: nil,
-        changelog_uri: nil
-      }
+        newest: nil
+      }.merge(gem_uris(spec.name))
     rescue StandardError => e
       gem_specs[:errors] << "Error processing local version for #{spec.name}: #{e.message}"
     end
