@@ -29,25 +29,35 @@ module Versions
     gem_specs[:errors] << e.message.to_s
   end
 
-  def self.remote_versions(gem_specs = {}) # rubocop:disable Metrics/AbcSize
+  def self.remote_versions(gem_specs = {})
     command = "#{bundle_bin} outdated --parseable --only-explicit#{filter_flag}"
     stdout_str, _stderr_str, _status = Open3.capture3(command)
 
-    stdout_str.each_line.each do |line|
-      match = line.match(/^\s*\*?(\S+)\s*\(newest\s*([^\s,)]+),?\sinstalled\s*([^\s,)]+)/)
-      next unless match
-
-      gem_name = match[1]
-      newest_version = match[2]
-      installed_version = match[3]
-
-      gem_specs[gem_name] ||= {}
-      gem_specs[gem_name][:newest] = newest_version
-      gem_specs[gem_name][:installed] = installed_version
-      gem_specs[gem_name] = gem_specs[gem_name].merge(gem_uris(gem_name))
+    stdout_str.each_line do |line|
+      parsed = parse_outdated_line(line)
+      gem_specs[parsed[:name]] = merge_remote_spec(gem_specs[parsed[:name]], parsed) if parsed
     end
   rescue StandardError => e
     gem_specs[:errors] << "Error fetching remote versions: #{e.message}"
+  end
+
+  # Merge a parsed outdated line into any existing local spec for the same gem,
+  # adding the newest/installed versions and homepage/changelog links.
+  def self.merge_remote_spec(existing, parsed)
+    (existing || {}).merge(
+      newest: parsed[:newest],
+      installed: parsed[:installed]
+    ).merge(gem_uris(parsed[:name]))
+  end
+
+  # Parse one line of `bundle outdated --parseable` output into its gem name and
+  # newest/installed versions. Handles pre-release (7.1.0.rc1) and platform
+  # (1.2.3-arm64-darwin) versions. Returns nil for lines that don't match.
+  def self.parse_outdated_line(line)
+    match = line.match(/^\s*\*?(\S+)\s*\(newest\s*([^\s,)]+),?\sinstalled\s*([^\s,)]+)/)
+    return nil unless match
+
+    { name: match[1], newest: match[2], installed: match[3] }
   end
 
   def self.bundle_bin
@@ -78,4 +88,6 @@ module Versions
   end
 end
 
-puts JSON.generate(Versions.call)
+# Only run when executed directly (`ruby bin/versions.rb`); stays silent when
+# required by tests so unit tests can exercise the pure methods in isolation.
+puts JSON.generate(Versions.call) if __FILE__ == $PROGRAM_NAME

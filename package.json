@@ -102,6 +102,7 @@
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
     "test": "vscode-test",
+    "test:ruby": "ruby test/versions_test.rb",
     "package": "npx @vscode/vsce package",
     "publish": "npx @vscode/vsce publish"
   },

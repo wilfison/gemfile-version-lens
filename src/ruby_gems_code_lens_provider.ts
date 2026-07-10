@@ -14,6 +14,7 @@ import {
 import * as path from "node:path";
 import * as cp from "node:child_process";
 import Cache from "./cache";
+import { parseGemDeclarations } from "./gemfile_parser";
 
 // Define types for the gem specification data
 interface GemSpec {
@@ -124,22 +125,16 @@ class RubyGemsCodeLensProvider implements CodeLensProvider, Disposable {
 
     this.cache.set(document.uri.fsPath, gemVersions);
 
-    // Match gem declarations, both `gem "rails"` and `gem("rails", "~> 8.0")`.
-    const gemRegex = /^[\t ]*gem\b\s*\(?\s*(['"])(.*?)\1(?:\s*,\s*(['"])(.+?)\3)?/gm;
-    const text = document.getText();
-    let match;
-
-    while ((match = gemRegex.exec(text)) !== null) {
-      const gemName = match[2];
-      const range = new Range(
-        document.positionAt(match.index),
-        document.positionAt(match.index + match[0].length),
-      );
-
-      const gemInfo = gemVersions.gems[gemName];
+    for (const declaration of parseGemDeclarations(document.getText())) {
+      const gemInfo = gemVersions.gems[declaration.name];
       if (!gemInfo) {
         continue; // Skip if gem info is not available
       }
+
+      const range = new Range(
+        document.positionAt(declaration.index),
+        document.positionAt(declaration.index + declaration.length),
+      );
 
       codeLenses = [...codeLenses, ...this.createCodeLens(gemInfo, range)];
     }
