@@ -56,7 +56,7 @@
           "Ruby",
           "ruby"
         ],
-        "extensions": [
+        "filenames": [
           "Gemfile"
         ]
       }

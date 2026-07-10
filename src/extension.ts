@@ -11,7 +11,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   const cache = new Cache();
 
-  const codeLensProvider = new RubyGemsCodeLensProvider(cache);
+  const codeLensProvider = new RubyGemsCodeLensProvider(cache, context.extensionPath);
   const selector: vscode.DocumentFilter[] = [{ language: "ruby", pattern: "**/Gemfile" }];
 
   context.subscriptions.push(

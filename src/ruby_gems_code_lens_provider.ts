@@ -36,6 +36,10 @@ class RubyGemsCodeLensProvider implements CodeLensProvider, Disposable {
   public readonly cache: Cache;
   private readonly output: OutputChannel;
 
+  // Extension root (from context.extensionPath), used to locate bin/versions.rb
+  // independent of the compiled output layout.
+  private readonly extensionPath: string;
+
   // Resources to tear down on dispose (listeners, output channel, emitter).
   private readonly disposables: Disposable[] = [];
 
@@ -61,8 +65,9 @@ class RubyGemsCodeLensProvider implements CodeLensProvider, Disposable {
   private readonly pendingInvalidations = new Set<string>();
   private invalidateAllPending = false;
 
-  constructor(cache: Cache) {
+  constructor(cache: Cache, extensionPath: string) {
     this.cache = cache;
+    this.extensionPath = extensionPath;
     this.output = window.createOutputChannel("Gemfile Version Lens");
     this.disposables.push(this.output, this._onDidChangeCodeLenses);
 
@@ -192,8 +197,7 @@ class RubyGemsCodeLensProvider implements CodeLensProvider, Disposable {
       return existing.promise;
     }
 
-    const extensionPath = path.dirname(__dirname);
-    const scriptPath = path.join(extensionPath, "bin", "versions.rb");
+    const scriptPath = path.join(this.extensionPath, "bin", "versions.rb");
     const config = workspace.getConfiguration("gemfileVersionLens");
     const updateLevel = config.get<string>("updateLevel", "all");
     const rubyPath = config.get<string>("rubyPath", "ruby");
