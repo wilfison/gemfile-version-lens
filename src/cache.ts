@@ -32,6 +32,11 @@ class Cache {
     return this.cache.has(key);
   }
 
+  // Remove a single entry from the cache
+  delete(key: string): void {
+    this.cache.delete(key);
+  }
+
   // Clear the cache
   clear(): void {
     this.cache.clear();

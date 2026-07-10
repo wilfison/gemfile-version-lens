@@ -37,6 +37,7 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
     // Watch for changes to Gemfile
     workspace.onDidSaveTextDocument((doc) => {
       if (this.isGemfile(doc)) {
+        this.cache.delete(doc.uri.fsPath);
         this._onDidChangeCodeLenses.fire();
       }
     });
