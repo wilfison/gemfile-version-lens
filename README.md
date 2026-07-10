@@ -34,13 +34,19 @@ Alternatively, you can install this extension directly from the [Visual Studio C
 
 ## How it works
 
-This extension activates automatically when you open a Gemfile. It parses the file content to identify gem declarations and then runs a Ruby script that fetches the latest minor version information using Bundler.
+This extension activates automatically when you open a Gemfile. It parses the file content to identify gem declarations and then runs a Ruby script that fetches the latest available version information using Bundler.
 
 The extension displays the following information as Code Lens:
 
 - The currently installed version
 - The latest available version (if an update is available)
 - Links to the gem's homepage and changelog (when available)
+
+## Extension Settings
+
+| Setting                          | Default | Description                                                                                                                               |
+| -------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `gemfileVersionLens.updateLevel` | `all`   | Which update levels to surface as the newest version: `all`, `major`, `minor`, or `patch`. Maps to bundler's `outdated --filter-*` flags. |
 
 ## Known Issues
 

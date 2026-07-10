@@ -54,7 +54,29 @@
           "Gemfile"
         ]
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Gemfile Version Lens",
+      "properties": {
+        "gemfileVersionLens.updateLevel": {
+          "type": "string",
+          "enum": [
+            "all",
+            "major",
+            "minor",
+            "patch"
+          ],
+          "enumDescriptions": [
+            "Show every newer version available",
+            "Only flag gems with a newer major version",
+            "Only flag gems with a newer minor version",
+            "Only flag gems with a newer patch version"
+          ],
+          "default": "all",
+          "description": "Which update levels to surface as the newest version. Maps to bundler's `outdated --filter-*` flags."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

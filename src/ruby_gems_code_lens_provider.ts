@@ -41,6 +41,14 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
         this._onDidChangeCodeLenses.fire();
       }
     });
+
+    // Re-run the version check when the extension settings change
+    workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration("gemfileVersionLens")) {
+        this.cache.clear();
+        this._onDidChangeCodeLenses.fire();
+      }
+    });
   }
 
   private isGemfile(document: TextDocument): boolean {
@@ -132,12 +140,17 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
     const extensionPath = path.dirname(__dirname);
     const scriptPath = path.join(extensionPath, "bin", "versions.rb");
 
+    const updateLevel = workspace
+      .getConfiguration("gemfileVersionLens")
+      .get<string>("updateLevel", "all");
+
     return new Promise<GemVersionsOutput | null>((resolve) => {
       try {
         // Run script in the directory of the Gemfile
         const cwd = path.dirname(document.uri.fsPath);
+        const env = { ...process.env, GVL_UPDATE_LEVEL: updateLevel };
 
-        cp.exec(`ruby "${scriptPath}"`, { cwd }, (error, stdout, stderr) => {
+        cp.exec(`ruby "${scriptPath}"`, { cwd, env }, (error, stdout, stderr) => {
           if (error) {
             window.showErrorMessage(`Failed to run versions.rb: ${error.message}`);
             resolve(null);

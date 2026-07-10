@@ -29,7 +29,7 @@ module Versions
   end
 
   def self.remote_versions(gem_specs = {}) # rubocop:disable Metrics/AbcSize
-    command = "#{bundle_bin} outdated --parseable --filter-minor --only-explicit"
+    command = "#{bundle_bin} outdated --parseable --only-explicit#{filter_flag}"
     stdout_str, _stderr_str, _status = Open3.capture3(command)
 
     stdout_str.each_line.each do |line|
@@ -53,6 +53,17 @@ module Versions
     return './bin/bundle' if File.exist?('./bin/bundle')
 
     'bundle'
+  end
+
+  # Maps the configured update level to a `bundle outdated` filter flag.
+  # Defaults to no filter (show every newer version).
+  def self.filter_flag
+    case ENV['GVL_UPDATE_LEVEL']
+    when 'major' then ' --filter-major'
+    when 'minor' then ' --filter-minor'
+    when 'patch' then ' --filter-patch'
+    else ''
+    end
   end
 
   def self.gem_uris(name)
