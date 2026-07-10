@@ -1,4 +1,4 @@
-import { GemVersionsOutput } from "./ruby_gems_code_lens_provider";
+import { GemVersionsOutput } from "./types";
 
 class Cache {
   private cache: Map<string, GemVersionsOutput>;
