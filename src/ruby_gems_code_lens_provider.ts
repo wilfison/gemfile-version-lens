@@ -227,6 +227,7 @@ class RubyGemsCodeLensProvider implements CodeLensProvider, Disposable {
 
         try {
           const parsedOutput = JSON.parse(stdout) as GemVersionsOutput;
+          this.output.appendLine(`versions.rb output for ${fsPath}: ${stdout}`);
           this.runErrorNotified = false;
           this.reportErrors(parsedOutput.errors);
           resolve(parsedOutput);
