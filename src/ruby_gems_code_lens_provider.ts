@@ -8,6 +8,8 @@ import {
   Range,
   TextDocument,
   OutputChannel,
+  CancellationToken,
+  Disposable,
 } from "vscode";
 import * as path from "node:path";
 import * as cp from "node:child_process";
@@ -34,23 +36,35 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
   public readonly cache: Cache;
   private readonly output: OutputChannel;
 
+  // In-flight versions.rb runs keyed by Gemfile path, so concurrent
+  // provideCodeLenses calls share one process instead of spawning many.
+  private readonly inflight = new Map<
+    string,
+    { promise: Promise<GemVersionsOutput | null>; child: cp.ChildProcess }
+  >();
+
+  // Debounce state for save/config-triggered refreshes, to coalesce bursts
+  // (e.g. auto-save) into a single re-run.
+  private static readonly REFRESH_DEBOUNCE_MS = 1500;
+  private refreshTimer: ReturnType<typeof setTimeout> | undefined;
+  private readonly pendingInvalidations = new Set<string>();
+  private invalidateAllPending = false;
+
   constructor(cache: Cache) {
     this.cache = cache;
     this.output = window.createOutputChannel("Gemfile Version Lens");
 
-    // Watch for changes to Gemfile
+    // Watch for changes to Gemfile (debounced to coalesce bursts of saves)
     workspace.onDidSaveTextDocument((doc) => {
       if (this.isGemfile(doc)) {
-        this.cache.delete(doc.uri.fsPath);
-        this._onDidChangeCodeLenses.fire();
+        this.scheduleRefresh(doc.uri.fsPath);
       }
     });
 
     // Re-run the version check when the extension settings change
     workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration("gemfileVersionLens")) {
-        this.cache.clear();
-        this._onDidChangeCodeLenses.fire();
+        this.scheduleRefresh();
       }
     });
   }
@@ -59,7 +73,10 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
     return path.basename(document.fileName) === "Gemfile";
   }
 
-  public async provideCodeLenses(document: TextDocument): Promise<CodeLens[]> {
+  public async provideCodeLenses(
+    document: TextDocument,
+    token: CancellationToken,
+  ): Promise<CodeLens[]> {
     if (!this.isGemfile(document)) {
       return [];
     }
@@ -67,7 +84,7 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
     let codeLenses: CodeLens[] = [];
 
     window.setStatusBarMessage("Fetching gem versions...", 2000);
-    let gemVersions = await this.getGemVersions(document);
+    let gemVersions = await this.getGemVersions(document, token);
 
     if (!gemVersions) {
       return [];
@@ -84,7 +101,7 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
       const gemName = match[2];
       const range = new Range(
         document.positionAt(match.index),
-        document.positionAt(match.index + match[0].length)
+        document.positionAt(match.index + match[0].length),
       );
 
       const gemInfo = gemVersions.gems[gemName];
@@ -112,7 +129,7 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
             title,
             command: "vscode.open",
             arguments: [url],
-          })
+          }),
         );
       }
     }
@@ -134,50 +151,131 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
     return codeLenses;
   }
 
-  private async getGemVersions(document: TextDocument): Promise<GemVersionsOutput | null> {
-    const cachedVersions = this.cache.get(document.uri.fsPath);
+  private getGemVersions(
+    document: TextDocument,
+    token?: CancellationToken,
+  ): Promise<GemVersionsOutput | null> {
+    const fsPath = document.uri.fsPath;
 
+    const cachedVersions = this.cache.get(fsPath);
     if (cachedVersions) {
-      return cachedVersions;
+      return Promise.resolve(cachedVersions);
+    }
+
+    // Reuse an in-flight run for the same Gemfile instead of spawning another.
+    const existing = this.inflight.get(fsPath);
+    if (existing) {
+      return existing.promise;
     }
 
     const extensionPath = path.dirname(__dirname);
     const scriptPath = path.join(extensionPath, "bin", "versions.rb");
-
     const updateLevel = workspace
       .getConfiguration("gemfileVersionLens")
       .get<string>("updateLevel", "all");
+    const cwd = path.dirname(fsPath);
+    const env = { ...process.env, GVL_UPDATE_LEVEL: updateLevel };
 
-    return new Promise<GemVersionsOutput | null>((resolve) => {
-      try {
-        // Run script in the directory of the Gemfile
-        const cwd = path.dirname(document.uri.fsPath);
-        const env = { ...process.env, GVL_UPDATE_LEVEL: updateLevel };
+    let child: cp.ChildProcess;
+    let tokenListener: Disposable | undefined;
 
-        cp.exec(`ruby "${scriptPath}"`, { cwd, env }, (error, stdout, stderr) => {
-          if (error) {
-            if (stderr) {
-              this.output.appendLine(stderr);
-            }
-            window.showErrorMessage(`Failed to run versions.rb: ${error.message}`);
+    const promise = new Promise<GemVersionsOutput | null>((resolve) => {
+      this.output.appendLine(`Running versions.rb for ${fsPath} with update level: ${updateLevel}`);
+      child = cp.execFile("ruby", [scriptPath], { cwd, env }, (error, stdout, stderr) => {
+        tokenListener?.dispose();
+
+        // Release the slot only if it still belongs to this run.
+        if (this.inflight.get(fsPath)?.child === child) {
+          this.inflight.delete(fsPath);
+        }
+
+        if (error) {
+          // A deliberate kill (cancellation/invalidation) is not a failure.
+          if (child.killed) {
             resolve(null);
             return;
           }
-
-          try {
-            const parsedOutput = JSON.parse(stdout) as GemVersionsOutput;
-            this.reportErrors(parsedOutput.errors);
-            resolve(parsedOutput);
-          } catch (e) {
-            window.showErrorMessage(`Failed to parse output from versions.rb: ${e}`);
-            resolve(null);
+          if (stderr) {
+            this.output.appendLine(stderr);
           }
-        });
-      } catch (e) {
-        window.showErrorMessage(`Error running versions.rb: ${e}`);
-        resolve(null);
+          window.showErrorMessage(`Failed to run versions.rb: ${error.message}`);
+          resolve(null);
+          return;
+        }
+
+        try {
+          const parsedOutput = JSON.parse(stdout) as GemVersionsOutput;
+          this.reportErrors(parsedOutput.errors);
+          resolve(parsedOutput);
+        } catch (e) {
+          window.showErrorMessage(`Failed to parse output from versions.rb: ${e}`);
+          resolve(null);
+        }
+      });
+    });
+
+    this.inflight.set(fsPath, { promise, child: child! });
+
+    // Kill the process if VS Code cancels this request, but only while this
+    // exact run is still the active one for the file.
+    tokenListener = token?.onCancellationRequested(() => {
+      if (this.inflight.get(fsPath)?.child === child) {
+        this.cancelInflight(fsPath);
       }
     });
+
+    return promise;
+  }
+
+  // Debounce a refresh so a burst of saves/config changes runs the script once.
+  private scheduleRefresh(fsPath?: string): void {
+    if (fsPath) {
+      this.pendingInvalidations.add(fsPath);
+    } else {
+      this.invalidateAllPending = true;
+    }
+
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+    }
+
+    this.refreshTimer = setTimeout(
+      () => this.flushRefresh(),
+      RubyGemsCodeLensProvider.REFRESH_DEBOUNCE_MS,
+    );
+  }
+
+  private flushRefresh(): void {
+    this.refreshTimer = undefined;
+
+    if (this.invalidateAllPending) {
+      this.cancelAllInflight();
+      this.cache.clear();
+    } else {
+      for (const fsPath of this.pendingInvalidations) {
+        this.cancelInflight(fsPath);
+        this.cache.delete(fsPath);
+      }
+    }
+
+    this.pendingInvalidations.clear();
+    this.invalidateAllPending = false;
+    this._onDidChangeCodeLenses.fire();
+  }
+
+  // Kill and forget the in-flight run for a file, so the next request restarts.
+  private cancelInflight(fsPath: string): void {
+    const entry = this.inflight.get(fsPath);
+    if (entry) {
+      this.inflight.delete(fsPath);
+      entry.child.kill();
+    }
+  }
+
+  private cancelAllInflight(): void {
+    for (const fsPath of [...this.inflight.keys()]) {
+      this.cancelInflight(fsPath);
+    }
   }
 
   // Surface errors reported by versions.rb instead of failing silently
@@ -194,7 +292,7 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
     window
       .showWarningMessage(
         `Gemfile Version Lens: ${errors.length} issue(s) while reading gem versions.`,
-        "Show Details"
+        "Show Details",
       )
       .then((choice) => {
         if (choice === "Show Details") {
