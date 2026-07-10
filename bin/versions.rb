@@ -34,7 +34,7 @@ module Versions
     stdout_str, _stderr_str, _status = Open3.capture3(command)
 
     stdout_str.each_line.each do |line|
-      match = line.match(/^\s*\*?(\S+)\s*\(newest\s*([\d.]+),?\sinstalled\s*([\d.]+)/)
+      match = line.match(/^\s*\*?(\S+)\s*\(newest\s*([^\s,)]+),?\sinstalled\s*([^\s,)]+)/)
       next unless match
 
       gem_name = match[1]
