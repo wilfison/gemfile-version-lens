@@ -5,3 +5,7 @@ node_modules
 *.vsix
 Gemfile.lock
 tmp/
+
+# ignore AI files
+AGENTS.md
+CLAUDE.md
