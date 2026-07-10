@@ -14,7 +14,10 @@ export function activate(context: vscode.ExtensionContext) {
   const codeLensProvider = new RubyGemsCodeLensProvider(cache);
   const selector: vscode.DocumentFilter[] = [{ language: "ruby", pattern: "**/Gemfile" }];
 
-  context.subscriptions.push(vscode.languages.registerCodeLensProvider(selector, codeLensProvider));
+  context.subscriptions.push(
+    codeLensProvider,
+    vscode.languages.registerCodeLensProvider(selector, codeLensProvider),
+  );
 }
 
 // This method is called when your extension is deactivated

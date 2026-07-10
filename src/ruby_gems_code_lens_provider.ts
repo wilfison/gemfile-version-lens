@@ -9,6 +9,7 @@ import {
   TextDocument,
   OutputChannel,
   CancellationToken,
+  Disposable,
 } from "vscode";
 import * as path from "node:path";
 import * as cp from "node:child_process";
@@ -28,12 +29,23 @@ export interface GemVersionsOutput {
   errors: string[];
 }
 
-class RubyGemsCodeLensProvider implements CodeLensProvider {
+class RubyGemsCodeLensProvider implements CodeLensProvider, Disposable {
   private _onDidChangeCodeLenses: EventEmitter<void> = new EventEmitter<void>();
   public readonly onDidChangeCodeLenses: Event<void> = this._onDidChangeCodeLenses.event;
 
   public readonly cache: Cache;
   private readonly output: OutputChannel;
+
+  // Resources to tear down on dispose (listeners, output channel, emitter).
+  private readonly disposables: Disposable[] = [];
+
+  // Children we killed on purpose (invalidation via cancelInflight). Lets the
+  // exec callback tell a deliberate kill (silent) from a timeout kill (surfaced).
+  private readonly abortedChildren = new WeakSet<cp.ChildProcess>();
+
+  // Show the "run failed" popup at most once until the next successful run,
+  // so a broken setup (e.g. ruby not on PATH) doesn't spam a toast per refresh.
+  private runErrorNotified = false;
 
   // In-flight versions.rb runs keyed by Gemfile path, so concurrent
   // provideCodeLenses calls share one process instead of spawning many.
@@ -52,20 +64,37 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
   constructor(cache: Cache) {
     this.cache = cache;
     this.output = window.createOutputChannel("Gemfile Version Lens");
+    this.disposables.push(this.output, this._onDidChangeCodeLenses);
 
     // Watch for changes to Gemfile (debounced to coalesce bursts of saves)
-    workspace.onDidSaveTextDocument((doc) => {
-      if (this.isGemfile(doc)) {
-        this.scheduleRefresh(doc.uri.fsPath);
-      }
-    });
+    this.disposables.push(
+      workspace.onDidSaveTextDocument((doc) => {
+        if (this.isGemfile(doc)) {
+          this.scheduleRefresh(doc.uri.fsPath);
+        }
+      }),
+    );
 
     // Re-run the version check when the extension settings change
-    workspace.onDidChangeConfiguration((event) => {
-      if (event.affectsConfiguration("gemfileVersionLens")) {
-        this.scheduleRefresh();
-      }
-    });
+    this.disposables.push(
+      workspace.onDidChangeConfiguration((event) => {
+        if (event.affectsConfiguration("gemfileVersionLens")) {
+          this.scheduleRefresh();
+        }
+      }),
+    );
+  }
+
+  public dispose(): void {
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = undefined;
+    }
+    this.cancelAllInflight();
+    for (const disposable of this.disposables) {
+      disposable.dispose();
+    }
+    this.disposables.length = 0;
   }
 
   private isGemfile(document: TextDocument): boolean {
@@ -82,7 +111,6 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
 
     let codeLenses: CodeLens[] = [];
 
-    window.setStatusBarMessage("Fetching gem versions...", 2000);
     let gemVersions = await this.getGemVersions(document);
 
     if (!gemVersions) {
@@ -91,8 +119,8 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
 
     this.cache.set(document.uri.fsPath, gemVersions);
 
-    // Regular expression to match gem declarations in Gemfile
-    const gemRegex = /^[\t ]*gem\s+(['"])(.*?)\1(?:\s*,\s*(['"])(.+?)\3)?/gm;
+    // Match gem declarations, both `gem "rails"` and `gem("rails", "~> 8.0")`.
+    const gemRegex = /^[\t ]*gem\b\s*\(?\s*(['"])(.*?)\1(?:\s*,\s*(['"])(.+?)\3)?/gm;
     const text = document.getText();
     let match;
 
@@ -166,9 +194,10 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
 
     const extensionPath = path.dirname(__dirname);
     const scriptPath = path.join(extensionPath, "bin", "versions.rb");
-    const updateLevel = workspace
-      .getConfiguration("gemfileVersionLens")
-      .get<string>("updateLevel", "all");
+    const config = workspace.getConfiguration("gemfileVersionLens");
+    const updateLevel = config.get<string>("updateLevel", "all");
+    const rubyPath = config.get<string>("rubyPath", "ruby");
+    const timeout = config.get<number>("timeout", 60000);
     const cwd = path.dirname(fsPath);
     const env = { ...process.env, GVL_UPDATE_LEVEL: updateLevel };
 
@@ -176,7 +205,7 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
 
     const promise = new Promise<GemVersionsOutput | null>((resolve) => {
       this.output.appendLine(`Running versions.rb for ${fsPath} with update level: ${updateLevel}`);
-      child = cp.execFile("ruby", [scriptPath], { cwd, env }, (error, stdout, stderr) => {
+      child = cp.execFile(rubyPath, [scriptPath], { cwd, env, timeout }, (error, stdout, stderr) => {
         // Release the slot only if it still belongs to this run.
         if (this.inflight.get(fsPath)?.child === child) {
           this.inflight.delete(fsPath);
@@ -184,28 +213,34 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
 
         if (error) {
           // A deliberate kill (invalidation via cancelInflight) is not a failure.
-          if (child.killed) {
+          if (this.abortedChildren.has(child)) {
+            this.abortedChildren.delete(child);
             resolve(null);
             return;
           }
           if (stderr) {
             this.output.appendLine(stderr);
           }
-          window.showErrorMessage(`Failed to run versions.rb: ${error.message}`);
+          this.reportRunError(this.describeRunError(error, rubyPath, timeout));
           resolve(null);
           return;
         }
 
         try {
           const parsedOutput = JSON.parse(stdout) as GemVersionsOutput;
+          this.runErrorNotified = false;
           this.reportErrors(parsedOutput.errors);
           resolve(parsedOutput);
         } catch (e) {
-          window.showErrorMessage(`Failed to parse output from versions.rb: ${e}`);
+          this.reportRunError(`Failed to parse output from versions.rb: ${e}`);
           resolve(null);
         }
       });
     });
+
+    // Show the status message only while a run is actually in flight, and keep
+    // it up for exactly as long as the run takes (not a fixed 2s, not on cache hits).
+    window.setStatusBarMessage("Fetching gem versions...", promise);
 
     this.inflight.set(fsPath, { promise, child: child! });
 
@@ -253,6 +288,8 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
     const entry = this.inflight.get(fsPath);
     if (entry) {
       this.inflight.delete(fsPath);
+      // Flag it so the exec callback treats this kill as intentional, not a failure.
+      this.abortedChildren.add(entry.child);
       entry.child.kill();
     }
   }
@@ -261,6 +298,35 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
     for (const fsPath of [...this.inflight.keys()]) {
       this.cancelInflight(fsPath);
     }
+  }
+
+  // Turn an exec failure into a user-facing message, with a hint for the most
+  // common cause (Ruby not on the editor's PATH) and for timeouts.
+  private describeRunError(error: cp.ExecFileException, rubyPath: string, timeout: number): string {
+    if (error.code === "ENOENT") {
+      return `Could not find the Ruby executable "${rubyPath}". Set "gemfileVersionLens.rubyPath" to its full path.`;
+    }
+    if (error.killed) {
+      return `versions.rb timed out after ${Math.round(timeout / 1000)}s. Increase "gemfileVersionLens.timeout" if your project is large.`;
+    }
+    return `Failed to run versions.rb: ${error.message}`;
+  }
+
+  // Always log the failure; only raise a popup the first time, so a broken
+  // setup doesn't spam a toast on every lens refresh. Resets on the next success.
+  private reportRunError(message: string): void {
+    this.output.appendLine(message);
+
+    if (this.runErrorNotified) {
+      return;
+    }
+    this.runErrorNotified = true;
+
+    window.showErrorMessage(`Gemfile Version Lens: ${message}`, "Show Details").then((choice) => {
+      if (choice === "Show Details") {
+        this.output.show(true);
+      }
+    });
   }
 
   // Surface errors reported by versions.rb instead of failing silently

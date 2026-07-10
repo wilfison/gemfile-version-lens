@@ -42,6 +42,12 @@
     "workspaceContains:Gemfile"
   ],
   "main": "./out/extension.js",
+  "capabilities": {
+    "virtualWorkspaces": false,
+    "untrustedWorkspaces": {
+      "supported": false
+    }
+  },
   "contributes": {
     "languages": [
       {
@@ -74,6 +80,17 @@
           ],
           "default": "all",
           "description": "Which update levels to surface as the newest version. Maps to bundler's `outdated --filter-*` flags."
+        },
+        "gemfileVersionLens.rubyPath": {
+          "type": "string",
+          "default": "ruby",
+          "description": "Path to the Ruby executable used to run the version check. Set this to an absolute path when Ruby (via rbenv/rvm/asdf/mise) is not on the PATH of the editor process."
+        },
+        "gemfileVersionLens.timeout": {
+          "type": "number",
+          "default": 60000,
+          "minimum": 1000,
+          "description": "Maximum time (in milliseconds) to wait for the version check before giving up. Prevents a hung `bundle outdated` from running forever."
         }
       }
     }
