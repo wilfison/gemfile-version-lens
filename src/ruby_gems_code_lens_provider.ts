@@ -9,7 +9,6 @@ import {
   TextDocument,
   OutputChannel,
   CancellationToken,
-  Disposable,
 } from "vscode";
 import * as path from "node:path";
 import * as cp from "node:child_process";
@@ -75,7 +74,7 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
 
   public async provideCodeLenses(
     document: TextDocument,
-    token: CancellationToken,
+    _token: CancellationToken,
   ): Promise<CodeLens[]> {
     if (!this.isGemfile(document)) {
       return [];
@@ -84,7 +83,7 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
     let codeLenses: CodeLens[] = [];
 
     window.setStatusBarMessage("Fetching gem versions...", 2000);
-    let gemVersions = await this.getGemVersions(document, token);
+    let gemVersions = await this.getGemVersions(document);
 
     if (!gemVersions) {
       return [];
@@ -151,10 +150,7 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
     return codeLenses;
   }
 
-  private getGemVersions(
-    document: TextDocument,
-    token?: CancellationToken,
-  ): Promise<GemVersionsOutput | null> {
+  private getGemVersions(document: TextDocument): Promise<GemVersionsOutput | null> {
     const fsPath = document.uri.fsPath;
 
     const cachedVersions = this.cache.get(fsPath);
@@ -177,20 +173,17 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
     const env = { ...process.env, GVL_UPDATE_LEVEL: updateLevel };
 
     let child: cp.ChildProcess;
-    let tokenListener: Disposable | undefined;
 
     const promise = new Promise<GemVersionsOutput | null>((resolve) => {
       this.output.appendLine(`Running versions.rb for ${fsPath} with update level: ${updateLevel}`);
       child = cp.execFile("ruby", [scriptPath], { cwd, env }, (error, stdout, stderr) => {
-        tokenListener?.dispose();
-
         // Release the slot only if it still belongs to this run.
         if (this.inflight.get(fsPath)?.child === child) {
           this.inflight.delete(fsPath);
         }
 
         if (error) {
-          // A deliberate kill (cancellation/invalidation) is not a failure.
+          // A deliberate kill (invalidation via cancelInflight) is not a failure.
           if (child.killed) {
             resolve(null);
             return;
@@ -215,14 +208,6 @@ class RubyGemsCodeLensProvider implements CodeLensProvider {
     });
 
     this.inflight.set(fsPath, { promise, child: child! });
-
-    // Kill the process if VS Code cancels this request, but only while this
-    // exact run is still the active one for the file.
-    tokenListener = token?.onCancellationRequested(() => {
-      if (this.inflight.get(fsPath)?.child === child) {
-        this.cancelInflight(fsPath);
-      }
-    });
 
     return promise;
   }
