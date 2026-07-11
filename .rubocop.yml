@@ -1,3 +1,12 @@
+AllCops:
+  # Pin the parser/cop target so linting is identical locally and in CI.
+  # Without this, RuboCop guesses from .ruby-version/.tool-versions (absent in
+  # CI) and falls back to the Ruby 2.7 parser, which rejects the endless method
+  # definitions used in the test suite.
+  TargetRubyVersion: 3.4
+  # Keep new cops from newer RuboCop releases opt-in rather than pending-warned.
+  NewCops: disable
+
 Style/FrozenStringLiteralComment:
   Enabled: true
   EnforcedStyle: always
