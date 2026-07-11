@@ -2,7 +2,7 @@
   "name": "gemfile-version-lens",
   "displayName": "Gemfile Version Lens",
   "description": "Shows the latest version for each gem in a Gemfile using code lens",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "publisher": "wilfison",
   "engines": {
     "vscode": "^1.100.0"

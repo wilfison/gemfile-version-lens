@@ -1,5 +1,11 @@
 # Change Log
 
+## [2.0.1]
+
+### Fixed
+
+- Exclude bundler-generated files (`vendor/`, `.bundle/`) from the packaged extension so they no longer bloat the `.vsix`.
+
 ## [2.0.0]
 
 ### Added
