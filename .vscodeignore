@@ -11,6 +11,9 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 **/.vscode-test.*
+vendor/**
+.bundle/**
+.ruby-lsp
 Gemfile.lock
 tmp/
 images/*.svg
