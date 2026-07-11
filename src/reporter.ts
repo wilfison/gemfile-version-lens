@@ -7,7 +7,9 @@ export interface Notifier {
   showWarning(message: string, ...actions: string[]): Thenable<string | undefined>;
 }
 
-const windowNotifier: Notifier = {
+// The default notifier backed by the real vscode window. Exported so other
+// coordinators (e.g. AuditService) can reuse it and swap in a fake for tests.
+export const windowNotifier: Notifier = {
   showError: (message, ...actions) => window.showErrorMessage(message, ...actions),
   showWarning: (message, ...actions) => window.showWarningMessage(message, ...actions),
 };

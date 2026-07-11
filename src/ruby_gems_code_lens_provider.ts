@@ -45,12 +45,13 @@ class RubyGemsCodeLensProvider implements CodeLensProvider, Disposable {
   // Resources to tear down on dispose (listeners, output channel, emitter).
   private readonly disposables: Disposable[] = [];
 
-  constructor(cache: Cache, extensionPath: string) {
+  constructor(cache: Cache, extensionPath: string, reporter: Reporter) {
     this.cache = cache;
     this.extensionPath = extensionPath;
 
-    const output = window.createOutputChannel("Gemfile Version Lens");
-    this.reporter = new Reporter(output);
+    // The OutputChannel is owned (and disposed) by activate(); the reporter is
+    // shared with the audit pipeline so all output lands in one channel.
+    this.reporter = reporter;
     this.runner = new VersionsRunner(this.reporter);
     this.refresh = new RefreshScheduler(
       {
@@ -67,7 +68,7 @@ class RubyGemsCodeLensProvider implements CodeLensProvider, Disposable {
       REFRESH_DEBOUNCE_MS,
     );
 
-    this.disposables.push(output, this._onDidChangeCodeLenses);
+    this.disposables.push(this._onDidChangeCodeLenses);
 
     // Watch for changes to Gemfile (debounced to coalesce bursts of saves).
     this.disposables.push(

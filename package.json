@@ -2,7 +2,7 @@
   "name": "gemfile-version-lens",
   "displayName": "Gemfile Version Lens",
   "description": "Shows the latest version for each gem in a Gemfile using code lens",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "publisher": "wilfison",
   "engines": {
     "vscode": "^1.100.0"
@@ -39,7 +39,8 @@
   },
   "activationEvents": [
     "onLanguage:ruby",
-    "workspaceContains:Gemfile"
+    "workspaceContains:Gemfile",
+    "workspaceContains:Gemfile.lock"
   ],
   "main": "./out/extension.js",
   "capabilities": {
@@ -59,6 +60,13 @@
         "filenames": [
           "Gemfile"
         ]
+      }
+    ],
+    "commands": [
+      {
+        "command": "gemfileVersionLens.showAuditReport",
+        "title": "Show Vulnerability Report",
+        "category": "Gemfile Version Lens"
       }
     ],
     "configuration": {
@@ -91,6 +99,11 @@
           "default": 60000,
           "minimum": 1000,
           "description": "Maximum time (in milliseconds) to wait for the version check before giving up. Prevents a hung `bundle outdated` from running forever."
+        },
+        "gemfileVersionLens.audit.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Scan Gemfile.lock for known vulnerabilities with bundler-audit when the workspace opens and when the lockfile changes. Requires the `bundler-audit` gem. The scan refreshes the advisory database (via git) once per session."
         }
       }
     }
@@ -102,7 +115,7 @@
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
     "test": "vscode-test",
-    "test:ruby": "ruby test/versions_test.rb",
+    "test:ruby": "ruby test/versions_test.rb && ruby test/audit_test.rb",
     "package": "npx @vscode/vsce package",
     "publish": "npx @vscode/vsce publish"
   },

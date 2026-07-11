@@ -35,4 +35,12 @@ suite("describeRunError", () => {
     const message = describeRunError(execError({ code: "ENOENT", killed: true }), "ruby", 60000);
     assert.match(message, /Could not find the Ruby executable/);
   });
+
+  test("names the given script in the timeout and generic messages", () => {
+    const timedOut = describeRunError(execError({ killed: true }), "ruby", 30000, "audit.rb");
+    assert.match(timedOut, /audit\.rb timed out after 30s/);
+
+    const generic = describeRunError(execError({ message: "boom" }), "ruby", 60000, "audit.rb");
+    assert.strictEqual(generic, "Failed to run audit.rb: boom");
+  });
 });
