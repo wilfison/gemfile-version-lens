@@ -5,6 +5,12 @@
 ### Added
 
 - Syntax highlighting for `Gemfile.lock`. A dedicated `gemfile-lock` language and TextMate grammar colorize section headers (`GEM`/`GIT`/`PATH`/`PLATFORMS`/`DEPENDENCIES`/`CHECKSUMS`/…), gem names, versions, version-constraint operators (`~>`, `>=`, `<`), `remote:` URLs, pinned-source markers (`!`), and `sha256` checksums — the lockfile is no longer shown as plain text.
+- Hover any gem in the `Gemfile` to see its full detail — installed and latest versions plus homepage/changelog links — including for gems that are already up to date.
+- New setting `gemfileVersionLens.showUpToDate` (default `false`) to render a CodeLens on every gem, restoring the previous always-on behavior.
+
+### Changed
+
+- Much less cluttered CodeLens. Only **outdated** gems get a lens now (up-to-date gems are hidden by default), and each outdated gem shows a single compact `installed → newest` lens (click it to open the changelog) plus a home icon for the homepage — instead of the previous four-part `Current: … | Newest: … | Open Homepage | Open Changelog` line. The full per-gem detail moved to the hover.
 
 ### Fixed
 

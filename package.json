@@ -107,6 +107,11 @@
           "default": "all",
           "description": "Which update levels to surface as the newest version. Maps to bundler's `outdated --filter-*` flags."
         },
+        "gemfileVersionLens.showUpToDate": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show a CodeLens for gems already on the newest version. Off by default so only outdated gems get a lens, keeping the Gemfile uncluttered; the installed version and homepage stay available on hover."
+        },
         "gemfileVersionLens.rubyPath": {
           "type": "string",
           "default": "ruby",

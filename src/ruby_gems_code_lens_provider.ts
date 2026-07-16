@@ -117,6 +117,10 @@ class RubyGemsCodeLensProvider implements CodeLensProvider, Disposable {
 
     this.cache.set(document.uri.fsPath, gemVersions);
 
+    const showUpToDate = workspace
+      .getConfiguration("gemfileVersionLens")
+      .get<boolean>("showUpToDate", false);
+
     const codeLenses: CodeLens[] = [];
     for (const declaration of parseGemDeclarations(document.getText())) {
       const gemInfo = gemVersions.gems[declaration.name];
@@ -129,7 +133,7 @@ class RubyGemsCodeLensProvider implements CodeLensProvider, Disposable {
         document.positionAt(declaration.index + declaration.length),
       );
 
-      codeLenses.push(...buildGemCodeLenses(gemInfo, range));
+      codeLenses.push(...buildGemCodeLenses(gemInfo, range, { showUpToDate }));
     }
 
     return codeLenses;

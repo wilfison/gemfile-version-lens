@@ -1,19 +1,42 @@
 import { CodeLens, Range } from "vscode";
 import { GemSpec } from "./types";
 
-// Build the CodeLenses shown above a single gem declaration: the installed
-// version, a warning when a newer version is available, and homepage/changelog
-// links when the gem provides them. Pure given a Range, so it is unit-testable.
-export function buildGemCodeLenses(gemInfo: GemSpec, range: Range): CodeLens[] {
-  const codeLenses: CodeLens[] = [
-    new CodeLens(range, { title: `Current: ${gemInfo.installed}`, command: "" }),
-  ];
+export interface BuildCodeLensOptions {
+  // When false (the default), gems already on the newest version render no
+  // lens at all, keeping the Gemfile uncluttered. The full detail for those
+  // gems stays available on hover (see gemfile_hover_provider).
+  showUpToDate?: boolean;
+}
 
-  if (hasNewerVersion(gemInfo)) {
-    codeLenses.push(new CodeLens(range, { title: `⚠️ Newest: ${gemInfo.newest}`, command: "" }));
+// Build the CodeLenses shown above a single gem declaration. Outdated gems get
+// a compact `installed → newest` lens (clickable to the changelog when known)
+// plus a homepage icon; up-to-date gems are hidden unless `showUpToDate` is set.
+// Pure given a Range, so it is unit-testable.
+export function buildGemCodeLenses(
+  gemInfo: GemSpec,
+  range: Range,
+  options: BuildCodeLensOptions = {},
+): CodeLens[] {
+  const outdated = hasNewerVersion(gemInfo);
+
+  // The single biggest source of clutter is a lens on every gem; up-to-date
+  // gems carry no actionable info, so hide them unless the user opts in.
+  if (!outdated && !options.showUpToDate) {
+    return [];
   }
 
-  codeLenses.push(...buildLinkCodeLenses(gemInfo, range));
+  const codeLenses: CodeLens[] = [buildVersionLens(gemInfo, range, outdated)];
+
+  if (gemInfo.homepage) {
+    codeLenses.push(
+      new CodeLens(range, {
+        title: "$(home)",
+        command: "vscode.open",
+        arguments: [gemInfo.homepage],
+        tooltip: "Open homepage",
+      }),
+    );
+  }
 
   return codeLenses;
 }
@@ -24,18 +47,23 @@ function hasNewerVersion(gemInfo: GemSpec): boolean {
   return Boolean(gemInfo.newest && gemInfo.installed !== gemInfo.newest);
 }
 
-// One "Open …" lens per link the gem exposes; links without a URL are omitted.
-// The changelog is only offered when there's a newer version to read about.
-function buildLinkCodeLenses(gemInfo: GemSpec, range: Range): CodeLens[] {
-  const links: Array<[string, string | undefined]> = [["Open Homepage", gemInfo.homepage]];
-
-  if (hasNewerVersion(gemInfo)) {
-    links.push(["Open Changelog", gemInfo.changelog]);
+// The version lens: `installed → newest` when outdated (linked to the changelog
+// if one is known), or the bare installed version for an up-to-date gem.
+function buildVersionLens(gemInfo: GemSpec, range: Range, outdated: boolean): CodeLens {
+  if (!outdated) {
+    return new CodeLens(range, { title: gemInfo.installed, command: "" });
   }
 
-  return links
-    .filter((entry): entry is [string, string] => Boolean(entry[1]))
-    .map(
-      ([title, url]) => new CodeLens(range, { title, command: "vscode.open", arguments: [url] }),
-    );
+  const title = `${gemInfo.installed} → ${gemInfo.newest}`;
+
+  if (gemInfo.changelog) {
+    return new CodeLens(range, {
+      title,
+      command: "vscode.open",
+      arguments: [gemInfo.changelog],
+      tooltip: "Open changelog",
+    });
+  }
+
+  return new CodeLens(range, { title, command: "" });
 }

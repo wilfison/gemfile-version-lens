@@ -39,11 +39,7 @@ Alternatively, you can install this extension directly from the [Visual Studio C
 
 This extension activates automatically when you open a Gemfile. It parses the file content to identify gem declarations and then runs a Ruby script that fetches the latest available version information using Bundler.
 
-The extension displays the following information as Code Lens:
-
-- The currently installed version
-- The latest available version (if an update is available)
-- Links to the gem's homepage and changelog (when available)
+To keep the file readable, only **outdated** gems get a Code Lens by default. Each one shows a compact `installed → newest` (click it to open the changelog) plus a home icon for the gem's homepage. **Hover** any gem to see the full detail — installed and latest versions and links — including for gems that are already up to date. Set `gemfileVersionLens.showUpToDate` to `true` if you'd rather see a lens on every gem.
 
 ## Vulnerability scanning
 
@@ -65,6 +61,7 @@ Notes:
 | Setting                            | Default | Description                                                                                                                               |
 | ---------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | `gemfileVersionLens.updateLevel`   | `all`   | Which update levels to surface as the newest version: `all`, `major`, `minor`, or `patch`. Maps to bundler's `outdated --filter-*` flags. |
+| `gemfileVersionLens.showUpToDate`  | `false` | Show a Code Lens for gems already on the newest version. Off by default so only outdated gems get a lens; the installed version and homepage stay available on hover. |
 | `gemfileVersionLens.rubyPath`      | `ruby`  | Path to the Ruby executable used to run the version and audit scripts. Set an absolute path when Ruby (rbenv/rvm/asdf/mise) is not on the editor's PATH. |
 | `gemfileVersionLens.timeout`       | `60000` | Maximum time (ms) to wait for a check before giving up. The first audit run may download the advisory database, which can be slow.        |
 | `gemfileVersionLens.audit.enabled` | `true`  | Scan `Gemfile.lock` for known vulnerabilities with bundler-audit on open and on change.                                                   |

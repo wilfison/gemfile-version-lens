@@ -6,70 +6,67 @@ import { buildGemCodeLenses } from "../code_lens_builder";
 const range = new Range(0, 0, 0, 10);
 
 suite("buildGemCodeLenses", () => {
-  test("renders only the current version when no newer version exists", () => {
+  test("hides a gem that has no newer version by default", () => {
     const lenses = buildGemCodeLenses({ installed: "1.0.0" }, range);
-    assert.strictEqual(lenses.length, 1);
-    assert.strictEqual(lenses[0].command?.title, "Current: 1.0.0");
-    assert.strictEqual(lenses[0].command?.command, "");
+    assert.deepStrictEqual(lenses, []);
   });
 
-  test("adds a newest-version warning when a newer version is available", () => {
-    const lenses = buildGemCodeLenses({ installed: "1.0.0", newest: "2.0.0" }, range);
-    assert.strictEqual(lenses.length, 2);
-    assert.strictEqual(lenses[0].command?.title, "Current: 1.0.0");
-    assert.strictEqual(lenses[1].command?.title, "⚠️ Newest: 2.0.0");
-  });
-
-  test("omits the warning when installed already equals newest", () => {
+  test("hides a gem already on the newest version by default", () => {
     const lenses = buildGemCodeLenses({ installed: "2.0.0", newest: "2.0.0" }, range);
-    assert.strictEqual(lenses.length, 1);
-    assert.strictEqual(lenses[0].command?.title, "Current: 2.0.0");
+    assert.deepStrictEqual(lenses, []);
   });
 
-  test("adds an Open Homepage link when a homepage is present", () => {
-    const lenses = buildGemCodeLenses(
-      { installed: "1.0.0", homepage: "https://example.com" },
-      range,
-    );
-    const link = lenses.find((lens) => lens.command?.title === "Open Homepage");
-    assert.ok(link, "expected an Open Homepage lens");
-    assert.strictEqual(link.command?.command, "vscode.open");
-    assert.deepStrictEqual(link.command?.arguments, ["https://example.com"]);
+  test("shows a compact `installed → newest` lens when outdated", () => {
+    const lenses = buildGemCodeLenses({ installed: "1.0.0", newest: "2.0.0" }, range);
+    assert.strictEqual(lenses[0].command?.title, "1.0.0 → 2.0.0");
   });
 
-  test("adds an Open Changelog link when a newer version has a changelog", () => {
+  test("links the version lens to the changelog when one is available", () => {
     const lenses = buildGemCodeLenses(
       { installed: "1.0.0", newest: "2.0.0", changelog: "https://example.com/CHANGELOG.md" },
       range,
     );
-    const link = lenses.find((lens) => lens.command?.title === "Open Changelog");
-    assert.ok(link, "expected an Open Changelog lens");
-    assert.deepStrictEqual(link.command?.arguments, ["https://example.com/CHANGELOG.md"]);
+    assert.strictEqual(lenses[0].command?.command, "vscode.open");
+    assert.deepStrictEqual(lenses[0].command?.arguments, ["https://example.com/CHANGELOG.md"]);
   });
 
-  test("omits the Open Changelog link when there is no newer version", () => {
-    const lenses = buildGemCodeLenses(
-      { installed: "1.0.0", changelog: "https://example.com/CHANGELOG.md" },
-      range,
-    );
-    assert.ok(!lenses.some((lens) => lens.command?.title === "Open Changelog"));
-  });
-
-  test("still shows the homepage link even without a newer version", () => {
-    const lenses = buildGemCodeLenses(
-      { installed: "1.0.0", homepage: "https://example.com", changelog: "https://example.com/CL" },
-      range,
-    );
-    assert.ok(lenses.some((lens) => lens.command?.title === "Open Homepage"));
-    assert.ok(!lenses.some((lens) => lens.command?.title === "Open Changelog"));
-  });
-
-  test("omits link lenses when the gem exposes no URLs", () => {
+  test("leaves the version lens non-clickable when there is no changelog", () => {
     const lenses = buildGemCodeLenses({ installed: "1.0.0", newest: "2.0.0" }, range);
-    assert.ok(!lenses.some((lens) => lens.command?.command === "vscode.open"));
+    assert.strictEqual(lenses[0].command?.command, "");
   });
 
-  test("orders lenses: current, newest, homepage, changelog", () => {
+  test("adds a homepage icon lens when a homepage is present", () => {
+    const lenses = buildGemCodeLenses(
+      { installed: "1.0.0", newest: "2.0.0", homepage: "https://example.com" },
+      range,
+    );
+    const home = lenses.find((lens) => lens.command?.title === "$(home)");
+    assert.ok(home, "expected a homepage lens");
+    assert.strictEqual(home.command?.command, "vscode.open");
+    assert.deepStrictEqual(home.command?.arguments, ["https://example.com"]);
+  });
+
+  test("shows the bare installed version for up-to-date gems when opted in", () => {
+    const lenses = buildGemCodeLenses(
+      { installed: "1.0.0", homepage: "https://example.com" },
+      range,
+      { showUpToDate: true },
+    );
+    assert.strictEqual(lenses[0].command?.title, "1.0.0");
+    assert.strictEqual(lenses[0].command?.command, "");
+    assert.ok(lenses.some((lens) => lens.command?.title === "$(home)"));
+  });
+
+  test("does not offer a changelog link for an up-to-date gem", () => {
+    const lenses = buildGemCodeLenses(
+      { installed: "1.0.0", changelog: "https://example.com/CL" },
+      range,
+      { showUpToDate: true },
+    );
+    assert.ok(!lenses.some((lens) => lens.command?.arguments?.[0] === "https://example.com/CL"));
+  });
+
+  test("orders lenses: version first, then homepage", () => {
     const lenses = buildGemCodeLenses(
       {
         installed: "1.0.0",
@@ -81,7 +78,7 @@ suite("buildGemCodeLenses", () => {
     );
     assert.deepStrictEqual(
       lenses.map((lens) => lens.command?.title),
-      ["Current: 1.0.0", "⚠️ Newest: 2.0.0", "Open Homepage", "Open Changelog"],
+      ["1.0.0 → 2.0.0", "$(home)"],
     );
   });
 });

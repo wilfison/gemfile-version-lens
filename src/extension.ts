@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 
 import Cache from "./cache";
 import RubyGemsCodeLensProvider from "./ruby_gems_code_lens_provider";
+import { GemfileHoverProvider } from "./gemfile_hover_provider";
 import { Reporter } from "./reporter";
 import { AuditRunner } from "./audit_runner";
 import { AuditService } from "./audit_service";
@@ -26,10 +27,16 @@ export function activate(context: vscode.ExtensionContext) {
   // own child process, bin/audit.rb) but shares the reporter/output channel.
   const auditService = new AuditService(context.extensionPath, reporter, new AuditRunner(reporter));
 
+  // Shares the cache the CodeLens provider populates: the hover surfaces the
+  // full per-gem detail (installed/newest, homepage/changelog) that the compact
+  // lens omits — notably for up-to-date gems, which render no lens by default.
+  const hoverProvider = new GemfileHoverProvider(cache);
+
   context.subscriptions.push(
     output,
     codeLensProvider,
     vscode.languages.registerCodeLensProvider(selector, codeLensProvider),
+    vscode.languages.registerHoverProvider(selector, hoverProvider),
     auditService,
   );
 
