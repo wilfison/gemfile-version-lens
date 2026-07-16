@@ -75,7 +75,12 @@ function vulnerableOutput(): AuditOutput {
 let counter = 0;
 let active: AuditService | undefined;
 
-function makeService(config: Partial<AuditConfig>, runner: FakeRunner, notifier: FakeNotifier) {
+function makeService(
+  config: Partial<AuditConfig>,
+  runner: FakeRunner,
+  notifier: FakeNotifier,
+  depsOverride: Partial<AuditServiceDeps> = {},
+) {
   counter += 1;
   const reporter = new FakeReporter();
   const deps: Partial<AuditServiceDeps> = {
@@ -94,6 +99,7 @@ function makeService(config: Partial<AuditConfig>, runner: FakeRunner, notifier:
     notifier,
     commandId: `test.gemfileVersionLens.showAuditReport.${counter}`,
     scheme: `test-gemfile-audit-${counter}`,
+    ...depsOverride,
   };
   const service = new AuditService(
     "/ext",
@@ -124,6 +130,45 @@ suite("AuditService", () => {
     await service.scanWorkspace();
 
     assert.strictEqual(runner.calls.length, 2, "two lockfiles, scanned once each");
+  });
+
+  test("skips lockfiles under tool-generated and vendored directories", async () => {
+    const runner = new FakeRunner();
+    runner.fallback = cleanOutput();
+    const { service } = makeService({}, runner, new FakeNotifier(), {
+      findLockfiles: () =>
+        Promise.resolve([
+          Uri.file("/a/Gemfile.lock"),
+          Uri.file("/a/.ruby-lsp/Gemfile.lock"),
+          Uri.file("/a/.haml-lsp/Gemfile.lock"),
+          Uri.file("/a/vendor/bundle/ruby/Gemfile.lock"),
+          Uri.file("/a/frontend/node_modules/pkg/Gemfile.lock"),
+        ]),
+    });
+
+    await service.scanWorkspace();
+
+    assert.deepStrictEqual(
+      runner.calls.map((c) => c.fsPath),
+      ["/a/Gemfile.lock"],
+      "only the project-root lockfile is scanned; tool/vendor dirs are skipped",
+    );
+  });
+
+  test("still audits legitimately nested projects (monorepo subdirs)", async () => {
+    const runner = new FakeRunner();
+    runner.fallback = cleanOutput();
+    const { service } = makeService({}, runner, new FakeNotifier(), {
+      findLockfiles: () =>
+        Promise.resolve([
+          Uri.file("/repo/backend/Gemfile.lock"),
+          Uri.file("/repo/frontend/Gemfile.lock"),
+        ]),
+    });
+
+    await service.scanWorkspace();
+
+    assert.strictEqual(runner.calls.length, 2, "nested app lockfiles are still audited");
   });
 
   test("requests a db update only on the first scan of the session", async () => {

@@ -1,5 +1,11 @@
 # Change Log
 
+## [Unreleased]
+
+### Fixed
+
+- Vulnerability scan no longer reports advisories from nested `Gemfile.lock` files under tool-generated or vendored directories (`.ruby-lsp/`, `.haml-lsp/`, `node_modules/`, `vendor/`). Legitimately nested projects (e.g. a monorepo's frontend/backend subdirectories) are still audited.
+
 ## [2.0.1]
 
 ### Fixed

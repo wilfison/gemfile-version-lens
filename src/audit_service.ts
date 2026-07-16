@@ -24,6 +24,23 @@ export const SHOW_REPORT_COMMAND = "gemfileVersionLens.showAuditReport";
 const REPORT_PATH = "/Bundler Audit Report.md";
 const RESCAN_DEBOUNCE_MS = 1500;
 
+// Directory names whose nested Gemfile.lock files are never audited. ruby-lsp and
+// haml-lsp each spin up their own uncommitted bundle in a dot-dir; vendored gems
+// and JS deps carry their own lockfiles too. The recursive search still finds
+// legitimately nested projects (e.g. a monorepo's frontend/backend subdirs).
+const EXCLUDED_LOCKFILE_DIRS = [".ruby-lsp", ".haml-lsp", "node_modules", "vendor"];
+
+// The same exclusion expressed as a findFiles exclude glob, so the initial scan
+// never even descends into these directories.
+const LOCKFILE_EXCLUDE_GLOB = `{${EXCLUDED_LOCKFILE_DIRS.map((dir) => `**/${dir}/**`).join(",")}}`;
+
+// True when a lockfile lives under an excluded directory. The single gate for
+// both the initial scan and watcher-driven rescans (the watcher glob can't
+// carry an exclude, so it must be filtered here).
+export function isExcludedLockfile(fsPath: string): boolean {
+  return fsPath.split(/[\\/]/).some((segment) => EXCLUDED_LOCKFILE_DIRS.includes(segment));
+}
+
 // The bits of configuration the audit needs, read together so tests can inject
 // them without a real workspace configuration.
 export interface AuditConfig {
@@ -108,7 +125,7 @@ export class AuditService implements Disposable, TextDocumentContentProvider {
 
     const lockfiles = await this.deps.findLockfiles();
     for (const uri of lockfiles) {
-      if (this.scanned.has(uri.fsPath)) {
+      if (isExcludedLockfile(uri.fsPath) || this.scanned.has(uri.fsPath)) {
         continue;
       }
       this.scanned.add(uri.fsPath);
@@ -288,6 +305,9 @@ export class AuditService implements Disposable, TextDocumentContentProvider {
   }
 
   private scheduleRescan(uri: Uri): void {
+    if (isExcludedLockfile(uri.fsPath)) {
+      return;
+    }
     const key = uri.fsPath;
     const existing = this.pendingRescans.get(key);
     if (existing) {
@@ -310,9 +330,7 @@ export class AuditService implements Disposable, TextDocumentContentProvider {
 }
 
 function defaultFindLockfiles(): Promise<Uri[]> {
-  return Promise.resolve(
-    workspace.findFiles("**/Gemfile.lock", "{**/node_modules/**,**/vendor/**}"),
-  );
+  return Promise.resolve(workspace.findFiles("**/Gemfile.lock", LOCKFILE_EXCLUDE_GLOB));
 }
 
 async function defaultReadText(uri: Uri): Promise<string> {
