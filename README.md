@@ -10,9 +10,8 @@
 
 ## Features
 
-- Shows the installed version of each gem directly above its declaration
-- Highlights when a newer version is available
-- Quick links to the gem's homepage and changelog (when available)
+- Highlights outdated gems with a compact `installed → newest` Code Lens above the declaration (click it to open the changelog, plus a home icon for the homepage)
+- Hover any gem for the full detail — installed and latest versions, homepage/changelog links, and known vulnerabilities
 - Version caching for optimized performance
 - Automatically detects when the Gemfile is saved and updates information
 - Scans your `Gemfile.lock` for known vulnerabilities with [bundler-audit](https://github.com/rubysec/bundler-audit) and reports them in the Problems panel and a rendered report
@@ -39,7 +38,11 @@ Alternatively, you can install this extension directly from the [Visual Studio C
 
 This extension activates automatically when you open a Gemfile. It parses the file content to identify gem declarations and then runs a Ruby script that fetches the latest available version information using Bundler.
 
-To keep the file readable, only **outdated** gems get a Code Lens by default. Each one shows a compact `installed → newest` (click it to open the changelog) plus a home icon for the gem's homepage. **Hover** any gem to see the full detail — installed and latest versions and links — including for gems that are already up to date. Set `gemfileVersionLens.showUpToDate` to `true` if you'd rather see a lens on every gem.
+To keep the file readable, only **outdated** gems get a Code Lens by default. Each one shows a compact `installed → newest` (click it to open the changelog) plus a home icon for the gem's homepage. Set `gemfileVersionLens.showUpToDate` to `true` if you'd rather see a lens on every gem.
+
+**Hover** any gem to see the full detail — installed and latest versions, homepage/changelog links, and any known vulnerabilities affecting the installed version — including for gems that are already up to date.
+
+![Gem hover with version detail and advisories](https://github.com/wilfison/gemfile-version-lens/raw/HEAD/images/hover.png)
 
 ## Vulnerability scanning
 
@@ -55,6 +58,12 @@ Notes:
 - The advisory database ([ruby-advisory-db](https://github.com/rubysec/ruby-advisory-db)) is downloaded on first use and refreshed (via `git`) once per session. This runs entirely on your machine.
 - To silence advisories you have reviewed and accepted, use a [`.bundler-audit.yml`](https://github.com/rubysec/bundler-audit#configuration-file) ignore list in your project — it is honored automatically.
 - Because the scan runs Ruby on open, it only runs in [trusted workspaces](https://code.visualstudio.com/docs/editor/workspace-trust).
+
+## Gemfile.lock syntax highlighting
+
+The extension ships a dedicated grammar for `Gemfile.lock`, so the lockfile is no longer shown as plain text. Section headers (`GEM`/`GIT`/`PATH`/`PLATFORMS`/`DEPENDENCIES`/`CHECKSUMS`/…), gem names, versions, version-constraint operators (`~>`, `>=`, `<`), `remote:` URLs, pinned-source markers (`!`), and `sha256` checksums are all colorized.
+
+![Gemfile.lock syntax highlighting](https://github.com/wilfison/gemfile-version-lens/raw/HEAD/images/syntax_highlighting.png)
 
 ## Extension Settings
 
