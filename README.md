@@ -16,6 +16,7 @@
 - Version caching for optimized performance
 - Automatically detects when the Gemfile is saved and updates information
 - Scans your `Gemfile.lock` for known vulnerabilities with [bundler-audit](https://github.com/rubysec/bundler-audit) and reports them in the Problems panel and a rendered report
+- Syntax highlighting for `Gemfile.lock` (section headers, gem names, versions, version constraints, `remote:` URLs, and checksums)
 
 ## Requirements
 

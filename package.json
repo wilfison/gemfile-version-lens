@@ -60,6 +60,24 @@
         "filenames": [
           "Gemfile"
         ]
+      },
+      {
+        "id": "gemfile-lock",
+        "aliases": [
+          "Gemfile.lock",
+          "gemfile-lock"
+        ],
+        "filenames": [
+          "Gemfile.lock"
+        ],
+        "configuration": "./syntaxes/gemfile-lock.language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "gemfile-lock",
+        "scopeName": "source.gemfile-lock",
+        "path": "./syntaxes/gemfile-lock.tmLanguage.json"
       }
     ],
     "commands": [

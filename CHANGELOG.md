@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Syntax highlighting for `Gemfile.lock`. A dedicated `gemfile-lock` language and TextMate grammar colorize section headers (`GEM`/`GIT`/`PATH`/`PLATFORMS`/`DEPENDENCIES`/`CHECKSUMS`/…), gem names, versions, version-constraint operators (`~>`, `>=`, `<`), `remote:` URLs, pinned-source markers (`!`), and `sha256` checksums — the lockfile is no longer shown as plain text.
+
 ### Fixed
 
 - Vulnerability scan no longer reports advisories from nested `Gemfile.lock` files under tool-generated or vendored directories (`.ruby-lsp/`, `.haml-lsp/`, `node_modules/`, `vendor/`). Legitimately nested projects (e.g. a monorepo's frontend/backend subdirectories) are still audited.

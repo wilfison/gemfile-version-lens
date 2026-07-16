@@ -1,0 +1,166 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Gemfile.lock",
+  "scopeName": "source.gemfile-lock",
+  "patterns": [
+    { "include": "#source-section" },
+    { "include": "#platforms-section" },
+    { "include": "#dependencies-section" },
+    { "include": "#checksums-section" },
+    { "include": "#ruby-version-section" },
+    { "include": "#bundled-with-section" },
+    { "include": "#generic-section-header" }
+  ],
+  "repository": {
+    "source-section": {
+      "comment": "GEM / GIT / PATH / PLUGIN SOURCE blocks, closed by the next top-level header.",
+      "begin": "^(GEM|GIT|PATH|PLUGIN SOURCE)\\s*$",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.section.gemfile-lock" }
+      },
+      "end": "^(?=\\S)",
+      "patterns": [
+        { "include": "#remote-line" },
+        { "include": "#metadata-line" },
+        { "include": "#spec-line" },
+        { "include": "#spec-dependency-line" }
+      ]
+    },
+    "platforms-section": {
+      "begin": "^(PLATFORMS)\\s*$",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.section.gemfile-lock" }
+      },
+      "end": "^(?=\\S)",
+      "patterns": [
+        {
+          "match": "^( {2})(\\S.*?)\\s*$",
+          "captures": {
+            "2": { "name": "constant.language.platform.gemfile-lock" }
+          }
+        }
+      ]
+    },
+    "dependencies-section": {
+      "begin": "^(DEPENDENCIES)\\s*$",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.section.gemfile-lock" }
+      },
+      "end": "^(?=\\S)",
+      "patterns": [
+        {
+          "comment": "A declared dependency: name, optional (constraint), optional trailing ! for a pinned git/path source.",
+          "match": "^( {2})([A-Za-z0-9_.-]+)(?: (\\()(.*?)(\\)))?(!)?\\s*$",
+          "captures": {
+            "2": { "name": "variable.other.gem.gemfile-lock" },
+            "3": { "name": "punctuation.definition.constraint.begin.gemfile-lock" },
+            "4": { "patterns": [{ "include": "#version-constraint" }] },
+            "5": { "name": "punctuation.definition.constraint.end.gemfile-lock" },
+            "6": { "name": "keyword.operator.pinned.gemfile-lock" }
+          }
+        }
+      ]
+    },
+    "checksums-section": {
+      "begin": "^(CHECKSUMS)\\s*$",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.section.gemfile-lock" }
+      },
+      "end": "^(?=\\S)",
+      "patterns": [
+        {
+          "match": "^( {2})([A-Za-z0-9_.-]+) (\\()([^)]*)(\\)) (sha256|sha512)(=)([A-Fa-f0-9]+)\\s*$",
+          "captures": {
+            "2": { "name": "entity.name.type.gem.gemfile-lock" },
+            "3": { "name": "punctuation.definition.constraint.begin.gemfile-lock" },
+            "4": { "name": "constant.numeric.version.gemfile-lock" },
+            "5": { "name": "punctuation.definition.constraint.end.gemfile-lock" },
+            "6": { "name": "keyword.other.checksum.gemfile-lock" },
+            "7": { "name": "keyword.operator.assignment.gemfile-lock" },
+            "8": { "name": "constant.other.checksum.gemfile-lock" }
+          }
+        }
+      ]
+    },
+    "ruby-version-section": {
+      "begin": "^(RUBY VERSION)\\s*$",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.section.gemfile-lock" }
+      },
+      "end": "^(?=\\S)",
+      "patterns": [
+        {
+          "match": "^( {2,})(ruby)\\s+(\\S+)",
+          "captures": {
+            "2": { "name": "keyword.control.ruby.gemfile-lock" },
+            "3": { "name": "constant.numeric.version.gemfile-lock" }
+          }
+        }
+      ]
+    },
+    "bundled-with-section": {
+      "begin": "^(BUNDLED WITH)\\s*$",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.section.gemfile-lock" }
+      },
+      "end": "^(?=\\S)",
+      "patterns": [
+        {
+          "match": "^( {2,})(\\S+)\\s*$",
+          "captures": {
+            "2": { "name": "constant.numeric.version.gemfile-lock" }
+          }
+        }
+      ]
+    },
+    "generic-section-header": {
+      "comment": "Fallback so any unrecognized top-level header still reads as a section.",
+      "match": "^([A-Z][A-Z ]*[A-Z]|[A-Z])\\s*$",
+      "name": "keyword.control.section.gemfile-lock"
+    },
+    "remote-line": {
+      "match": "^( {2})(remote)(:)\\s*(.*?)\\s*$",
+      "captures": {
+        "2": { "name": "support.type.property-name.gemfile-lock" },
+        "3": { "name": "punctuation.separator.key-value.gemfile-lock" },
+        "4": { "name": "markup.underline.link.gemfile-lock" }
+      }
+    },
+    "metadata-line": {
+      "comment": "specs:, revision:, branch:, ref:, tag:, glob:, type:, submodules:, ...",
+      "match": "^( {2})([a-z_]+)(:)\\s*(.*?)\\s*$",
+      "captures": {
+        "2": { "name": "support.type.property-name.gemfile-lock" },
+        "3": { "name": "punctuation.separator.key-value.gemfile-lock" },
+        "4": { "name": "string.unquoted.gemfile-lock" }
+      }
+    },
+    "spec-line": {
+      "comment": "A resolved spec (4-space indent): name (version).",
+      "match": "^( {4})([A-Za-z0-9_.-]+) (\\()([^)]*)(\\))\\s*$",
+      "captures": {
+        "2": { "name": "entity.name.type.gem.gemfile-lock" },
+        "3": { "name": "punctuation.definition.version.begin.gemfile-lock" },
+        "4": { "name": "constant.numeric.version.gemfile-lock" },
+        "5": { "name": "punctuation.definition.version.end.gemfile-lock" }
+      }
+    },
+    "spec-dependency-line": {
+      "comment": "A spec's own dependency (6-space indent): name, optional (constraint).",
+      "match": "^( {6})([A-Za-z0-9_.-]+)(?: (\\()(.*?)(\\)))?\\s*$",
+      "captures": {
+        "2": { "name": "variable.other.gem.gemfile-lock" },
+        "3": { "name": "punctuation.definition.constraint.begin.gemfile-lock" },
+        "4": { "patterns": [{ "include": "#version-constraint" }] },
+        "5": { "name": "punctuation.definition.constraint.end.gemfile-lock" }
+      }
+    },
+    "version-constraint": {
+      "patterns": [
+        { "match": "~>|>=|<=|!=|=|>|<", "name": "keyword.operator.version.gemfile-lock" },
+        { "match": "[0-9]+(?:\\.[0-9A-Za-z]+)*", "name": "constant.numeric.version.gemfile-lock" },
+        { "match": ",", "name": "punctuation.separator.constraint.gemfile-lock" }
+      ]
+    }
+  }
+}
